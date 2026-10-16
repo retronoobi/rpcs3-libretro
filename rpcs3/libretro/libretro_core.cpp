@@ -2563,6 +2563,29 @@ bool retro_load_game(const struct retro_game_info* game)
 
     game_path = game->path;
 
+#ifdef _WIN32
+    // EmuVR passes paths relative to RetroArch's working directory. RPCS3's
+    // Windows file API adds the extended-length prefix, which requires an
+    // absolute path, before the EBOOT folder search or PKG/ISO open happens.
+    if (!fs::get_virtual_device(game_path))
+    {
+        std::error_code ec;
+        const auto absolute = std::filesystem::absolute(
+            std::filesystem::path(std::u8string(game_path.begin(), game_path.end())), ec);
+        if (ec)
+        {
+            if (log_cb)
+                log_cb(RETRO_LOG_ERROR, "RPCS3: could not resolve content path '%s': %s\n", game_path.c_str(), ec.message().c_str());
+            return false;
+        }
+        const auto text = absolute.lexically_normal().generic_u8string();
+        game_path.assign(text.begin(), text.end());
+    }
+#endif
+
+    if (log_cb)
+        log_cb(RETRO_LOG_INFO, "RPCS3: loading content '%s'\n", game_path.c_str());
+
     // A PKG is installed, not started, as standalone RPCS3 does: the core says
     // where it went and has RetroArch close the content again (retro_run). The
     // game is started afterwards from its PARAM.SFO in dev_hdd0/game/ (NNshi:
@@ -2707,7 +2730,8 @@ bool retro_load_game(const struct retro_game_info* game)
 
             if (game_folder.empty())
             {
-
+                if (log_cb)
+                    log_cb(RETRO_LOG_ERROR, "RPCS3: no game folder found for '%s' (expected PARAM.SFO or PS3_GAME)\n", game_path.c_str());
                 return false;
             }
 

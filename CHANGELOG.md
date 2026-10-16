@@ -4,6 +4,7 @@ What changed in the libretro core of this fork, newest first. Changes that come 
 
 ## Unreleased
 
+- Windows: games launched with a relative path, as EmuVR passes them, now resolve against the frontend's working directory before loading. PSN games could otherwise stop with "Failed to load content" before booting.
 - Android x86_64 (buildbot): ffmpeg is built with its x86 assembly, as the buildbot's Android image now has nasm; it decodes the games' videos faster there.
 - The `libretro-latest` release is gone: libretro's buildbot builds the core for every platform it had, and installs it through RetroArch's Online Updater, while the release had fallen behind. Test builds stay as artifacts of the CI workflow.
 - Android: a game behind a `saf://` path, as the Play Store RetroArch gives for folders it was granted, is read through RetroArch's VFS for directories too: listing, stat, creating, removing, renaming and copying, not only opening files. That is what an unpacked game in such a folder needs. Ordinary paths are untouched. Not tried on a real SAF path by anyone yet.
