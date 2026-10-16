@@ -1,0 +1,76 @@
+name: Build Windows relative-path test
+on:
+  push:
+    branches:
+      - codex/fix-relative-content-path
+permissions:
+  contents: read
+concurrency:
+  group: windows-relative-path-test
+  cancel-in-progress: true
+env:
+  KEEP_SYMBOLS: '0'
+jobs:
+  Windows:
+    # Test build using the existing MSYS2 clang64 Windows build script rather
+    # than MSVC: the core exists only as a CMake target, so rpcs3.sln - the way
+    # upstream builds Windows - is no use, and CMake with MSVC gets no further
+    # because the LLVM on the runner image is the client distribution, with no
+    # CMake package and no static libraries for find_package(LLVM) to find.
+    # clang64 ships all of that as packages, which is the same environment
+    # .ci/build-windows-clang.sh already uses for the application.
+    name: libretro core windows-x64 (experimental)
+    runs-on: windows-2025
+    env:
+      KEEP_SYMBOLS: ${{ inputs.keep_symbols && '1' || '0' }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+
+      - name: Setup msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: clang64
+          update: true
+          cache: true
+          install: |
+            mingw-w64-clang-x86_64-clang
+            mingw-w64-clang-x86_64-ccache
+            mingw-w64-clang-x86_64-cmake
+            mingw-w64-clang-x86_64-lld
+            mingw-w64-clang-x86_64-ninja
+            mingw-w64-clang-x86_64-llvm
+            mingw-w64-clang-x86_64-ffmpeg
+            mingw-w64-clang-x86_64-nasm
+            mingw-w64-clang-x86_64-pkgconf
+            mingw-w64-clang-x86_64-opencv
+            mingw-w64-clang-x86_64-glew
+            mingw-w64-clang-x86_64-vulkan
+            mingw-w64-clang-x86_64-vulkan-headers
+            mingw-w64-clang-x86_64-vulkan-loader
+            base-devel
+            curl
+            git
+            p7zip
+
+      - name: Build
+        run: .ci/build-windows-clang-libretro.sh
+
+      - name: Add the core info file
+        shell: bash
+        run: cp rpcs3/libretro/rpcs3_libretro.info artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@main
+        with:
+          name: rpcs3_libretro-windows-x86_64
+          path: |
+            artifacts/*.dll
+            artifacts/*.info
+          compression-level: 0
+
